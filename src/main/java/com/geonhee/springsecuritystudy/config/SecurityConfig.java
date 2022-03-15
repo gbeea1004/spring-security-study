@@ -5,13 +5,13 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.web.authentication.AuthenticationFailureHandler;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.logout.LogoutHandler;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import java.io.IOException;
 
 @Configuration
@@ -24,28 +24,24 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .authorizeRequests()
                 .anyRequest().authenticated();
         http
-                .formLogin()
-//                .loginPage("/loginPage")
-                .defaultSuccessUrl("/")
-                .failureUrl("/login")
-                .usernameParameter("userId")
-                .passwordParameter("passwd")
-                .loginProcessingUrl("/login_proc") // 사용자 이름과 암호를 제출할 URL
-                .successHandler(new AuthenticationSuccessHandler() {
+                .formLogin();
+        http
+                .logout()
+                .logoutUrl("/logout") // 스프링 시큐리티는 기본적으로 로그아웃을 POST 방식으로 처리함
+                .logoutSuccessUrl("/login")
+                .addLogoutHandler(new LogoutHandler() {
                     @Override
-                    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
-                        System.out.println("authentication : " + authentication.getName());
-                        response.sendRedirect("/");
+                    public void logout(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
+                        HttpSession session = request.getSession();
+                        session.invalidate();
                     }
                 })
-                .failureHandler(new AuthenticationFailureHandler() {
+                .logoutSuccessHandler(new LogoutSuccessHandler() {
                     @Override
-                    public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) throws IOException, ServletException {
-                        System.out.println("exception : " + exception.getMessage());
+                    public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
                         response.sendRedirect("/login");
                     }
                 })
-                .permitAll(); // 어떠한 보안 요구 없이 요청을 허용 -> 이걸 해줘야 로그인 화면('/loginPage')에 접근이 가능함
-
+                .deleteCookies("remember-me");
     }
 }
